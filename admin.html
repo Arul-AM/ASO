@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — A Strik Out Co</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0a0a; --paper:#f4f3ee; --paper-dim:#e7e5dc; --strike:#dcff4f; --strike-dim:#b8d63f;
+    --grey:#8f8c82; --grey-dark:#3a3934; --line: rgba(244,243,238,0.14); --radius:8px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ background:var(--ink); color:var(--paper); font-family:'Space Grotesk',sans-serif; line-height:1.4; }
+  h1,h2,h3{ font-family:'Archivo Black',sans-serif; font-weight:400; letter-spacing:-0.01em; }
+  a{ color:inherit; }
+  button{ font-family:inherit; cursor:pointer; }
+  ::selection{ background:var(--strike); color:var(--ink); }
+
+  /* ---- login ---- */
+  #loginScreen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .login-box{ width:100%; max-width:340px; }
+  .login-box h1{ font-size:24px; margin-bottom:6px; }
+  .login-box p{ color:var(--grey); font-size:13px; margin-bottom:24px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--grey); margin-bottom:6px; }
+  .field input, .field select, .field textarea{
+    width:100%; background:#141410; border:1px solid var(--line); border-radius:6px; color:var(--paper);
+    padding:10px 12px; font-size:14px; font-family:inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline:2px solid var(--strike); outline-offset:1px; }
+  .btn{
+    background:var(--strike); color:var(--ink); border:none; border-radius:999px; padding:11px 20px;
+    font-weight:700; font-size:14px; width:100%;
+  }
+  .btn:disabled{ opacity:.5; }
+  .btn-ghost{ background:transparent; border:1px solid var(--line); color:var(--paper); }
+  #loginError{ color:#ff8080; font-size:13px; margin-top:10px; min-height:16px; }
+
+  /* ---- dashboard shell ---- */
+  #dash{ display:none; min-height:100vh; }
+  header.admin-head{
+    display:flex; align-items:center; justify-content:space-between; padding:18px 28px;
+    border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--ink); z-index:10;
+  }
+  header.admin-head .brand{ font-family:'Archivo Black'; font-size:15px; }
+  header.admin-head .who{ font-size:12px; color:var(--grey); }
+  .wrap{ max-width:1180px; margin:0 auto; padding:24px 28px 60px; }
+
+  .stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:26px; }
+  .stat-card{ border:1px solid var(--line); border-radius:var(--radius); padding:16px; }
+  .stat-card .n{ font-family:'Archivo Black'; font-size:28px; }
+  .stat-card .l{ font-size:12px; color:var(--grey); margin-top:4px; }
+  @media (max-width:760px){ .stat-row{ grid-template-columns:repeat(2,1fr); } }
+
+  .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .tab{
+    border:1px solid var(--line); background:transparent; color:var(--paper); border-radius:999px;
+    padding:7px 14px; font-size:12.5px;
+  }
+  .tab.active{ background:var(--strike); color:var(--ink); border-color:var(--strike); }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  thead th{ text-align:left; color:var(--grey); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.04em; padding:10px 12px; border-bottom:1px solid var(--line); }
+  tbody td{ padding:12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr{ cursor:pointer; transition:background .15s ease; }
+  tbody tr:hover{ background:#141410; }
+  .badge{ display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600; }
+  .badge.new{ background:#2b2b1e; color:var(--strike); }
+  .badge.in_progress{ background:#1e2b2b; color:#7fd6d6; }
+  .badge.done{ background:#1e2b1e; color:#8fe08f; }
+  .src{ font-size:11px; color:var(--grey); text-transform:uppercase; }
+  .empty-row td{ text-align:center; color:var(--grey); padding:40px 0; }
+
+  /* ---- drawer ---- */
+  #overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; z-index:200; }
+  #drawer{
+    position:fixed; top:0; right:0; bottom:0; width:420px; max-width:100vw; background:#111108;
+    border-left:1px solid var(--line); z-index:201; transform:translateX(100%); transition:transform .3s ease;
+    overflow-y:auto; padding:24px;
+  }
+  #drawer.open{ transform:translateX(0); }
+  #overlay.open{ display:block; }
+  #drawer .close-x{ background:none; border:none; color:var(--paper); font-size:18px; float:right; cursor:pointer; }
+  #drawer h2{ font-size:19px; margin-bottom:4px; }
+  #drawer .meta{ font-size:12px; color:var(--grey); margin-bottom:18px; }
+  #drawer dl{ margin-bottom:20px; }
+  #drawer dt{ font-size:11px; text-transform:uppercase; color:var(--grey); margin-top:12px; }
+  #drawer dd{ font-size:14px; margin-top:2px; white-space:pre-wrap; }
+  .status-row{ display:flex; gap:8px; margin:16px 0; }
+  .status-row button{ flex:1; border:1px solid var(--line); background:transparent; color:var(--paper); border-radius:6px; padding:8px 6px; font-size:12px; }
+  .status-row button.active{ background:var(--strike); color:var(--ink); border-color:var(--strike); }
+  .deliver-box{ border-top:1px solid var(--line); margin-top:20px; padding-top:18px; }
+  .deliver-box h3{ font-size:14px; margin-bottom:4px; }
+  .deliver-box p.hint{ font-size:12px; color:var(--grey); margin-bottom:12px; }
+  #deliverMsg{ font-size:12.5px; margin-top:10px; min-height:16px; }
+  .delivered-block{ border:1px solid var(--line); border-radius:6px; padding:12px; margin-top:10px; font-size:12.5px; color:var(--grey); }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <form class="login-box" id="loginForm">
+    <h1>Admin sign-in</h1>
+    <p>A Strik Out Co — requests dashboard</p>
+    <div class="field"><label>Email</label><input type="email" id="loginEmail" required autocomplete="username"></div>
+    <div class="field"><label>Password</label><input type="password" id="loginPassword" required autocomplete="current-password"></div>
+    <button class="btn" type="submit" id="loginBtn">Sign in</button>
+    <div id="loginError"></div>
+  </form>
+</div>
+
+<div id="dash">
+  <header class="admin-head">
+    <div class="brand">A STRIK OUT — ADMIN</div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <span class="who" id="whoEmail"></span>
+      <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:12px;" id="signOutBtn">Sign out</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="stat-row">
+      <div class="stat-card"><div class="n" id="statTotal">–</div><div class="l">Total requests</div></div>
+      <div class="stat-card"><div class="n" id="statNew">–</div><div class="l">New / unreviewed</div></div>
+      <div class="stat-card"><div class="n" id="statProgress">–</div><div class="l">In progress</div></div>
+      <div class="stat-card"><div class="n" id="statUpcoming">–</div><div class="l">Due within 14 days</div></div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-filter="all">All</button>
+      <button class="tab" data-filter="source:student">Student projects</button>
+      <button class="tab" data-filter="source:client">Client work</button>
+      <button class="tab" data-filter="status:new">New</button>
+      <button class="tab" data-filter="status:in_progress">In progress</button>
+      <button class="tab" data-filter="status:done">Done</button>
+      <button class="tab" id="refreshBtn" style="margin-left:auto;">↻ Refresh</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Source</th><th>Topic / type</th><th>Need by</th><th>Status</th><th>Submitted</th></tr>
+      </thead>
+      <tbody id="reqTableBody">
+        <tr class="empty-row"><td colspan="6">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="overlay"></div>
+<div id="drawer">
+  <button class="close-x" id="drawerClose">✕</button>
+  <div id="drawerContent"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/config.js"></script>
+<script src="assets/aso-client.js"></script>
+<script>
+  let ALL_REQUESTS = [];
+  let ACTIVE_FILTER = 'all';
+  let ACTIVE_ROW = null;
+
+  function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }); }
+  function fmtDateTime(d){ if(!d) return '—'; return new Date(d).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); }
+  function statusLabel(s){ return { new:'New', in_progress:'In progress', done:'Done' }[s] || s; }
+
+  window.asoReady((client) => {
+
+    // ---------- auth ----------
+    const loginScreen = document.getElementById('loginScreen');
+    const dash = document.getElementById('dash');
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginBtn.disabled = true; loginError.textContent = '';
+      const { error } = await client.auth.signInWithPassword({
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value,
+      });
+      loginBtn.disabled = false;
+      if (error) { loginError.textContent = error.message; return; }
+      enterDashboard();
+    });
+
+    document.getElementById('signOutBtn').addEventListener('click', async () => {
+      await client.auth.signOut();
+      location.reload();
+    });
+
+    async function enterDashboard(){
+      const { data: { user } } = await client.auth.getUser();
+      if(!user) return;
+      loginScreen.style.display = 'none';
+      dash.style.display = 'block';
+      document.getElementById('whoEmail').textContent = user.email;
+      loadRequests();
+    }
+
+    client.auth.getSession().then(({ data }) => { if (data.session) enterDashboard(); });
+
+    // ---------- data ----------
+    async function loadRequests(){
+      const tbody = document.getElementById('reqTableBody');
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Loading…</td></tr>';
+      const { data, error } = await client.from('requests').select('*').order('created_at', { ascending:false });
+      if (error) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Could not load requests.</td></tr>'; console.error(error); return; }
+      ALL_REQUESTS = data;
+      renderStats();
+      renderTable();
+    }
+
+    function renderStats(){
+      const total = ALL_REQUESTS.length;
+      const nu = ALL_REQUESTS.filter(r => r.status === 'new').length;
+      const ip = ALL_REQUESTS.filter(r => r.status === 'in_progress').length;
+      const soon = new Date(); soon.setDate(soon.getDate() + 14);
+      const upcoming = ALL_REQUESTS.filter(r => r.need_by && r.status !== 'done' && new Date(r.need_by) <= soon).length;
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statNew').textContent = nu;
+      document.getElementById('statProgress').textContent = ip;
+      document.getElementById('statUpcoming').textContent = upcoming;
+    }
+
+    function filteredRequests(){
+      if (ACTIVE_FILTER === 'all') return ALL_REQUESTS;
+      const [k, v] = ACTIVE_FILTER.split(':');
+      return ALL_REQUESTS.filter(r => r[k] === v);
+    }
+
+    function renderTable(){
+      const tbody = document.getElementById('reqTableBody');
+      const rows = filteredRequests();
+      if (!rows.length){ tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No requests here yet.</td></tr>'; return; }
+      tbody.innerHTML = rows.map(r => `
+        <tr data-id="${r.id}">
+          <td><b>${escapeHtml(r.name)}</b><br><span style="color:var(--grey);font-size:12px;">${escapeHtml(r.email)}</span></td>
+          <td><span class="src">${r.source}</span></td>
+          <td>${escapeHtml(r.topic || r.project_type || '—')}</td>
+          <td>${fmtDate(r.need_by)}</td>
+          <td><span class="badge ${r.status}">${statusLabel(r.status)}</span></td>
+          <td>${fmtDateTime(r.created_at)}</td>
+        </tr>
+      `).join('');
+      tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+        tr.addEventListener('click', () => openDrawer(tr.dataset.id));
+      });
+    }
+
+    function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    document.getElementById('tabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab');
+      if (!btn) return;
+      if (btn.id === 'refreshBtn') { loadRequests(); return; }
+      ACTIVE_FILTER = btn.dataset.filter;
+      document.querySelectorAll('#tabs .tab[data-filter]').forEach(b => b.classList.toggle('active', b === btn));
+      renderTable();
+    });
+
+    // ---------- drawer ----------
+    const overlay = document.getElementById('overlay');
+    const drawer = document.getElementById('drawer');
+    document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+    overlay.addEventListener('click', closeDrawer);
+    function closeDrawer(){ overlay.classList.remove('open'); drawer.classList.remove('open'); }
+
+    function openDrawer(id){
+      const r = ALL_REQUESTS.find(x => x.id === id);
+      if (!r) return;
+      ACTIVE_ROW = r;
+      const isStudent = r.source === 'student';
+      document.getElementById('drawerContent').innerHTML = `
+        <h2>${escapeHtml(r.name)}</h2>
+        <div class="meta">${r.source} · submitted ${fmtDateTime(r.created_at)}</div>
+        <dl>
+          <dt>Email</dt><dd>${escapeHtml(r.email)}</dd>
+          <dt>Phone</dt><dd>${escapeHtml(r.phone || '—')}</dd>
+          ${isStudent ? `
+            <dt>Department</dt><dd>${escapeHtml(r.department || '—')}</dd>
+            <dt>Language / Tech</dt><dd>${escapeHtml(r.language_tech || '—')}</dd>
+            <dt>Topic</dt><dd>${escapeHtml(r.topic || '—')}</dd>
+            <dt>Need by</dt><dd>${fmtDate(r.need_by)}</dd>
+          ` : `
+            <dt>Project type</dt><dd>${escapeHtml(r.project_type || '—')}</dd>
+            <dt>Budget range</dt><dd>${escapeHtml(r.budget_range || '—')}</dd>
+          `}
+          <dt>Notes</dt><dd>${escapeHtml(r.notes || '—')}</dd>
+        </dl>
+
+        <div class="status-row" id="statusRow">
+          <button data-s="new" class="${r.status==='new'?'active':''}">New</button>
+          <button data-s="in_progress" class="${r.status==='in_progress'?'active':''}">In progress</button>
+          <button data-s="done" class="${r.status==='done'?'active':''}">Done</button>
+        </div>
+
+        ${isStudent ? `
+          ${r.status === 'done' ? `
+            <div class="delivered-block">
+              Delivered ${fmtDateTime(r.delivered_at)}${r.video_url ? ' · <a href="'+r.video_url+'" target="_blank" style="color:var(--strike);">video link</a>' : ''}
+              <br>Package (software list, comparison table, install guide) was generated and emailed.
+            </div>
+          ` : `
+            <div class="deliver-box">
+              <h3>Deliver this project</h3>
+              <p class="hint">Generates a software list, a comparison table and a step-by-step install guide with AI, then emails the student the package along with the video link below.</p>
+              <div class="field"><label>Installation video URL (optional)</label><input type="url" id="deliverVideo" placeholder="https://youtu.be/…"></div>
+              <button class="btn" id="deliverBtn">Generate &amp; send package</button>
+              <div id="deliverMsg"></div>
+            </div>
+          `}
+        ` : ''}
+      `;
+
+      document.getElementById('statusRow').querySelectorAll('button').forEach(b => {
+        b.addEventListener('click', () => updateStatus(r.id, b.dataset.s));
+      });
+      const deliverBtn = document.getElementById('deliverBtn');
+      if (deliverBtn) deliverBtn.addEventListener('click', () => deliverProject(r.id));
+
+      overlay.classList.add('open');
+      drawer.classList.add('open');
+    }
+
+    async function updateStatus(id, status){
+      const { error } = await client.from('requests').update({ status }).eq('id', id);
+      if (error) { console.error(error); return; }
+      await loadRequests();
+      openDrawer(id);
+    }
+
+    async function deliverProject(id){
+      const btn = document.getElementById('deliverBtn');
+      const msg = document.getElementById('deliverMsg');
+      const videoUrl = document.getElementById('deliverVideo').value || null;
+      btn.disabled = true;
+      msg.textContent = 'Generating with AI and sending — this can take up to a minute…';
+      try {
+        const { data: { session } } = await client.auth.getSession();
+        const res = await fetch(window.ASO_CONFIG.SUPABASE_URL + '/functions/v1/deliver-project', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: window.ASO_CONFIG.SUPABASE_ANON_KEY,
+            Authorization: 'Bearer ' + session.access_token,
+          },
+          body: JSON.stringify({ request_id: id, video_url: videoUrl }),
+        });
+        const out = await res.json();
+        if (!res.ok) throw new Error(out.error || 'Failed');
+        msg.textContent = 'Sent! Marked as done.';
+        await loadRequests();
+        openDrawer(id);
+      } catch (err) {
+        console.error(err);
+        msg.textContent = 'Something went wrong: ' + err.message;
+        btn.disabled = false;
+      }
+    }
+
+  });
+</script>
+</body>
+</html>

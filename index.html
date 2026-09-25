@@ -1093,61 +1093,54 @@
   })();
 
   /* ---------- Lead form ---------- */
-  /* Paste a Google Apps Script Web App URL here to auto-save every submission to a
-     Google Sheet. Leave blank and the form falls back to opening the visitor's email
-     client, pre-addressed to astrikout@gmail.com. */
-  const FORM_ENDPOINT = "";
-
   const leadForm = document.getElementById('leadForm');
   const formStatus = document.getElementById('formStatus');
+  const leadSubmitBtn = leadForm.querySelector('button[type="submit"]');
   leadForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     if(leadForm.company.value){ return; } // honeypot triggered — silently drop
 
     const data = {
+      source: 'client',
       name: leadForm.name.value,
-      phone: leadForm.phone.value,
+      phone: leadForm.phone.value || null,
       email: leadForm.email.value,
-      type: leadForm.type.value,
-      budget: leadForm.budget.value,
-      message: leadForm.message.value,
-      page: location.href,
-      referrer: document.referrer || 'direct',
-      submitted_at: new Date().toISOString()
+      project_type: leadForm.type.value,
+      budget_range: leadForm.budget.value,
+      notes: leadForm.message.value,
     };
 
     formStatus.textContent = 'Sending…';
+    leadSubmitBtn.disabled = true;
 
-    if(FORM_ENDPOINT){
-      try{
-        await fetch(FORM_ENDPOINT, {
-          method:'POST', mode:'no-cors',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(data)
-        });
-        formStatus.textContent = 'Sent — we\'ll reply within 24 hours.';
-        sSuccess(); burstConfetti();
-        leadForm.reset();
+    window.asoReady(async (client) => {
+      const { data: row, error } = await client.from('requests').insert(data).select('id').single();
+      if (error) {
+        console.error(error);
+        formStatus.textContent = "Couldn't send — email us directly at astrikout@gmail.com.";
+        leadSubmitBtn.disabled = false;
         return;
-      }catch(err){ /* fall through to mailto */ }
-    }
-
-    const subject = encodeURIComponent('New project inquiry — ' + data.name);
-    const body = encodeURIComponent(
-      'Name: ' + data.name + '\n' +
-      'Email: ' + data.email + '\n' +
-      'Phone: ' + (data.phone || '—') + '\n' +
-      'Project type: ' + data.type + '\n' +
-      'Budget: ' + data.budget + '\n' +
-      'Message: ' + data.message + '\n\n' +
-      'Page: ' + data.page + '\n' +
-      'Referrer: ' + data.referrer
-    );
-    window.location.href = 'mailto:astrikout@gmail.com?subject=' + subject + '&body=' + body;
-    formStatus.textContent = 'Opening your email app — hit send to reach us.';
-    sSuccess(); burstConfetti();
+      }
+      fetch(window.ASO_CONFIG.SUPABASE_URL + '/functions/v1/notify-new-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: window.ASO_CONFIG.SUPABASE_ANON_KEY,
+          Authorization: 'Bearer ' + window.ASO_CONFIG.SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ request_id: row.id }),
+      }).catch(() => {});
+      formStatus.textContent = 'Sent — we\'ll reply within 24 hours.';
+      sSuccess(); burstConfetti();
+      leadForm.reset();
+      leadSubmitBtn.disabled = false;
+    });
   });
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/config.js"></script>
+<script src="assets/aso-client.js"></script>
+<script src="assets/chat-widget.js"></script>
 </body>
 </html>
