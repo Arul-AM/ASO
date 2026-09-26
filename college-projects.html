@@ -1057,7 +1057,6 @@
         headers: {
           'Content-Type': 'application/json',
           apikey: window.ASO_CONFIG.SUPABASE_ANON_KEY,
-          Authorization: 'Bearer ' + window.ASO_CONFIG.SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ request_id: row.id }),
       }).catch(() => {});
