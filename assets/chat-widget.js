@@ -128,32 +128,26 @@
       log.appendChild(typing);
       log.scrollTop = log.scrollHeight;
 
-      window.asoReady(async (client) => {
-        try {
-          const res = await fetch(window.ASO_CONFIG.SUPABASE_URL + "/functions/v1/chat", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: window.ASO_CONFIG.SUPABASE_ANON_KEY,
-              Authorization: "Bearer " + window.ASO_CONFIG.SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({ message: text, history: history.slice(0, -1) }),
-          });
-          const data = await res.json();
-          typing.remove();
-          const reply = data.reply || data.error || "Sorry, I couldn't reply just now — try emailing astrikout@gmail.com.";
-          history.push({ role: "assistant", content: reply });
-          saveHistory(history);
-          render();
-        } catch (err) {
-          typing.remove();
-          history.push({ role: "assistant", content: "Sorry, I couldn't reach the assistant. Try again in a moment or email astrikout@gmail.com." });
-          saveHistory(history);
-          render();
-        } finally {
-          sendBtn.disabled = false;
-        }
-      });
+      try {
+        const res = await fetch(window.ASO_FUNCTIONS_BASE + "/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, history: history.slice(0, -1) }),
+        });
+        const data = await res.json();
+        typing.remove();
+        const reply = data.reply || data.error || "Sorry, I couldn't reply just now — try emailing astrikout@gmail.com.";
+        history.push({ role: "assistant", content: reply });
+        saveHistory(history);
+        render();
+      } catch (err) {
+        typing.remove();
+        history.push({ role: "assistant", content: "Sorry, I couldn't reach the assistant. Try again in a moment or email astrikout@gmail.com." });
+        saveHistory(history);
+        render();
+      } finally {
+        sendBtn.disabled = false;
+      }
     });
 
     input.addEventListener("keydown", (e) => {

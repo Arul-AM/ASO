@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // `requests` holds every submission from both site forms (student +
+    // client). Visitors may only create a new request — they can never read,
+    // list, edit or delete requests (their own or anyone else's). Only a
+    // signed-in admin (any user you create in Authentication → Users, since
+    // there's no public sign-up) can read, update or delete.
+    match /requests/{requestId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // Everything else is closed by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
