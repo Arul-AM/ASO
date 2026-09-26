@@ -20,7 +20,6 @@
   button{ font-family:inherit; cursor:pointer; }
   ::selection{ background:var(--strike); color:var(--ink); }
 
-  /* ---- login ---- */
   #loginScreen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
   .login-box{ width:100%; max-width:340px; }
   .login-box h1{ font-size:24px; margin-bottom:6px; }
@@ -32,20 +31,13 @@
     padding:10px 12px; font-size:14px; font-family:inherit;
   }
   .field input:focus, .field select:focus, .field textarea:focus{ outline:2px solid var(--strike); outline-offset:1px; }
-  .btn{
-    background:var(--strike); color:var(--ink); border:none; border-radius:999px; padding:11px 20px;
-    font-weight:700; font-size:14px; width:100%;
-  }
+  .btn{ background:var(--strike); color:var(--ink); border:none; border-radius:999px; padding:11px 20px; font-weight:700; font-size:14px; width:100%; }
   .btn:disabled{ opacity:.5; }
   .btn-ghost{ background:transparent; border:1px solid var(--line); color:var(--paper); }
   #loginError{ color:#ff8080; font-size:13px; margin-top:10px; min-height:16px; }
 
-  /* ---- dashboard shell ---- */
   #dash{ display:none; min-height:100vh; }
-  header.admin-head{
-    display:flex; align-items:center; justify-content:space-between; padding:18px 28px;
-    border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--ink); z-index:10;
-  }
+  header.admin-head{ display:flex; align-items:center; justify-content:space-between; padding:18px 28px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--ink); z-index:10; }
   header.admin-head .brand{ font-family:'Archivo Black'; font-size:15px; }
   header.admin-head .who{ font-size:12px; color:var(--grey); }
   .wrap{ max-width:1180px; margin:0 auto; padding:24px 28px 60px; }
@@ -56,12 +48,10 @@
   .stat-card .l{ font-size:12px; color:var(--grey); margin-top:4px; }
   @media (max-width:760px){ .stat-row{ grid-template-columns:repeat(2,1fr); } }
 
-  .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
-  .tab{
-    border:1px solid var(--line); background:transparent; color:var(--paper); border-radius:999px;
-    padding:7px 14px; font-size:12.5px;
-  }
+  .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+  .tab{ border:1px solid var(--line); background:transparent; color:var(--paper); border-radius:999px; padding:7px 14px; font-size:12.5px; }
   .tab.active{ background:var(--strike); color:var(--ink); border-color:var(--strike); }
+  .tab-export{ background:transparent; border:1px solid var(--strike); color:var(--strike); border-radius:999px; padding:7px 14px; font-size:12.5px; font-weight:600; margin-left:auto; }
 
   table{ width:100%; border-collapse:collapse; font-size:13px; }
   thead th{ text-align:left; color:var(--grey); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.04em; padding:10px 12px; border-bottom:1px solid var(--line); }
@@ -75,13 +65,8 @@
   .src{ font-size:11px; color:var(--grey); text-transform:uppercase; }
   .empty-row td{ text-align:center; color:var(--grey); padding:40px 0; }
 
-  /* ---- drawer ---- */
   #overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; z-index:200; }
-  #drawer{
-    position:fixed; top:0; right:0; bottom:0; width:420px; max-width:100vw; background:#111108;
-    border-left:1px solid var(--line); z-index:201; transform:translateX(100%); transition:transform .3s ease;
-    overflow-y:auto; padding:24px;
-  }
+  #drawer{ position:fixed; top:0; right:0; bottom:0; width:420px; max-width:100vw; background:#111108; border-left:1px solid var(--line); z-index:201; transform:translateX(100%); transition:transform .3s ease; overflow-y:auto; padding:24px; }
   #drawer.open{ transform:translateX(0); }
   #overlay.open{ display:block; }
   #drawer .close-x{ background:none; border:none; color:var(--paper); font-size:18px; float:right; cursor:pointer; }
@@ -137,7 +122,8 @@
       <button class="tab" data-filter="status:new">New</button>
       <button class="tab" data-filter="status:in_progress">In progress</button>
       <button class="tab" data-filter="status:done">Done</button>
-      <button class="tab" id="refreshBtn" style="margin-left:auto;">↻ Refresh</button>
+      <button class="tab" id="refreshBtn">↻ Refresh</button>
+      <button class="tab-export" id="exportBtn">⬇ Export CSV</button>
     </div>
 
     <table>
@@ -157,19 +143,22 @@
   <div id="drawerContent"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/config.js"></script>
-<script src="assets/aso-client.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="assets/firebase-config.js"></script>
+<script src="assets/firebase-client.js"></script>
 <script>
   let ALL_REQUESTS = [];
   let ACTIVE_FILTER = 'all';
-  let ACTIVE_ROW = null;
 
-  function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }); }
-  function fmtDateTime(d){ if(!d) return '—'; return new Date(d).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); }
+  function toDate(v){ return v && v.toDate ? v.toDate() : (v ? new Date(v) : null); }
+  function fmtDate(d){ d = toDate(d); if(!d) return '—'; return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }); }
+  function fmtDateTime(d){ d = toDate(d); if(!d) return '—'; return d.toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); }
   function statusLabel(s){ return { new:'New', in_progress:'In progress', done:'Done' }[s] || s; }
+  function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  window.asoReady((client) => {
+  window.asoReady(({ auth, db }) => {
 
     // ---------- auth ----------
     const loginScreen = document.getElementById('loginScreen');
@@ -181,40 +170,45 @@
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       loginBtn.disabled = true; loginError.textContent = '';
-      const { error } = await client.auth.signInWithPassword({
-        email: document.getElementById('loginEmail').value,
-        password: document.getElementById('loginPassword').value,
-      });
-      loginBtn.disabled = false;
-      if (error) { loginError.textContent = error.message; return; }
-      enterDashboard();
+      try {
+        await auth.signInWithEmailAndPassword(
+          document.getElementById('loginEmail').value,
+          document.getElementById('loginPassword').value
+        );
+      } catch (err) {
+        loginError.textContent = err.message;
+      } finally {
+        loginBtn.disabled = false;
+      }
     });
 
-    document.getElementById('signOutBtn').addEventListener('click', async () => {
-      await client.auth.signOut();
-      location.reload();
+    document.getElementById('signOutBtn').addEventListener('click', () => auth.signOut());
+
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        loginScreen.style.display = 'none';
+        dash.style.display = 'block';
+        document.getElementById('whoEmail').textContent = user.email;
+        loadRequests();
+      } else {
+        loginScreen.style.display = 'flex';
+        dash.style.display = 'none';
+      }
     });
-
-    async function enterDashboard(){
-      const { data: { user } } = await client.auth.getUser();
-      if(!user) return;
-      loginScreen.style.display = 'none';
-      dash.style.display = 'block';
-      document.getElementById('whoEmail').textContent = user.email;
-      loadRequests();
-    }
-
-    client.auth.getSession().then(({ data }) => { if (data.session) enterDashboard(); });
 
     // ---------- data ----------
     async function loadRequests(){
       const tbody = document.getElementById('reqTableBody');
       tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Loading…</td></tr>';
-      const { data, error } = await client.from('requests').select('*').order('created_at', { ascending:false });
-      if (error) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Could not load requests.</td></tr>'; console.error(error); return; }
-      ALL_REQUESTS = data;
-      renderStats();
-      renderTable();
+      try {
+        const snap = await db.collection('requests').orderBy('created_at', 'desc').get();
+        ALL_REQUESTS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderStats();
+        renderTable();
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Could not load requests.</td></tr>';
+      }
     }
 
     function renderStats(){
@@ -249,21 +243,47 @@
           <td>${fmtDateTime(r.created_at)}</td>
         </tr>
       `).join('');
-      tbody.querySelectorAll('tr[data-id]').forEach(tr => {
-        tr.addEventListener('click', () => openDrawer(tr.dataset.id));
-      });
+      tbody.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', () => openDrawer(tr.dataset.id)));
     }
 
-    function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
     document.getElementById('tabs').addEventListener('click', (e) => {
-      const btn = e.target.closest('.tab');
+      const btn = e.target.closest('.tab, .tab-export');
       if (!btn) return;
       if (btn.id === 'refreshBtn') { loadRequests(); return; }
+      if (btn.id === 'exportBtn') { exportCsv(); return; }
       ACTIVE_FILTER = btn.dataset.filter;
       document.querySelectorAll('#tabs .tab[data-filter]').forEach(b => b.classList.toggle('active', b === btn));
       renderTable();
     });
+
+    // ---------- CSV export ----------
+    function csvCell(v){
+      if (v === null || v === undefined) return '';
+      const s = typeof v === 'object' && v.toDate ? v.toDate().toISOString() : String(v);
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    function exportCsv(){
+      const rows = filteredRequests();
+      const headers = ['Name','Email','Phone','Source','Department','Language/Tech','Project Type','Budget Range','Topic','Need By','Status','Notes','Submitted','Delivered','Video URL'];
+      const lines = [headers.map(csvCell).join(',')];
+      rows.forEach(r => {
+        lines.push([
+          r.name, r.email, r.phone, r.source, r.department, r.language_tech,
+          r.project_type, r.budget_range, r.topic, r.need_by, statusLabel(r.status), r.notes,
+          r.created_at, r.delivered_at, r.video_url,
+        ].map(csvCell).join(','));
+      });
+      const blob = new Blob(["\uFEFF" + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0,10);
+      a.href = url;
+      a.download = `astrikout-requests-${ACTIVE_FILTER.replace(':','-')}-${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
 
     // ---------- drawer ----------
     const overlay = document.getElementById('overlay');
@@ -275,7 +295,6 @@
     function openDrawer(id){
       const r = ALL_REQUESTS.find(x => x.id === id);
       if (!r) return;
-      ACTIVE_ROW = r;
       const isStudent = r.source === 'student';
       document.getElementById('drawerContent').innerHTML = `
         <h2>${escapeHtml(r.name)}</h2>
@@ -330,10 +349,11 @@
     }
 
     async function updateStatus(id, status){
-      const { error } = await client.from('requests').update({ status }).eq('id', id);
-      if (error) { console.error(error); return; }
-      await loadRequests();
-      openDrawer(id);
+      try {
+        await db.collection('requests').doc(id).update({ status, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+        await loadRequests();
+        openDrawer(id);
+      } catch (err) { console.error(err); }
     }
 
     async function deliverProject(id){
@@ -343,14 +363,10 @@
       btn.disabled = true;
       msg.textContent = 'Generating with AI and sending — this can take up to a minute…';
       try {
-        const { data: { session } } = await client.auth.getSession();
-        const res = await fetch(window.ASO_CONFIG.SUPABASE_URL + '/functions/v1/deliver-project', {
+        const idToken = await auth.currentUser.getIdToken();
+        const res = await fetch(window.ASO_FUNCTIONS_BASE + '/deliverProject', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: window.ASO_CONFIG.SUPABASE_ANON_KEY,
-            Authorization: 'Bearer ' + session.access_token,
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
           body: JSON.stringify({ request_id: id, video_url: videoUrl }),
         });
         const out = await res.json();

@@ -1108,38 +1108,40 @@
       project_type: leadForm.type.value,
       budget_range: leadForm.budget.value,
       notes: leadForm.message.value,
+      status: 'new',
+      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      updated_at: firebase.firestore.FieldValue.serverTimestamp(),
     };
 
     formStatus.textContent = 'Sending…';
     leadSubmitBtn.disabled = true;
 
-    window.asoReady(async (client) => {
-      const { data: row, error } = await client.from('requests').insert(data).select('id').single();
-      if (error) {
-        console.error(error);
+    window.asoReady(async ({ db }) => {
+      try {
+        const docRef = await db.collection('requests').add(data);
+        fetch(window.ASO_FUNCTIONS_BASE + '/notifyNewRequest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request_id: docRef.id }),
+        }).catch(() => {});
+        formStatus.textContent = 'Sent — we\'ll reply within 24 hours.';
+        sSuccess(); burstConfetti();
+        leadForm.reset();
+      } catch (err) {
+        console.error(err);
         formStatus.textContent = "Couldn't send — email us directly at astrikout@gmail.com.";
+      } finally {
         leadSubmitBtn.disabled = false;
-        return;
       }
-      fetch(window.ASO_CONFIG.SUPABASE_URL + '/functions/v1/notify-new-request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: window.ASO_CONFIG.SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ request_id: row.id }),
-      }).catch(() => {});
-      formStatus.textContent = 'Sent — we\'ll reply within 24 hours.';
-      sSuccess(); burstConfetti();
-      leadForm.reset();
-      leadSubmitBtn.disabled = false;
     });
   });
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/config.js"></script>
-<script src="assets/aso-client.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="assets/firebase-config.js"></script>
+<script src="assets/firebase-client.js"></script>
 <script src="assets/chat-widget.js"></script>
 </body>
 </html>

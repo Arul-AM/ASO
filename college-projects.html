@@ -1040,37 +1040,39 @@
       department: projForm.dept.value || null, language_tech: projForm.lang.value || null,
       topic: projForm.topic.value || null, need_by: projForm.needBy.value || null,
       notes: projForm.message.value || null,
+      status: 'new',
+      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      updated_at: firebase.firestore.FieldValue.serverTimestamp(),
     };
     projSubmitBtn.disabled = true;
     projStatus.textContent = 'Sending…';
-    window.asoReady(async (client) => {
-      const { data: row, error } = await client.from('requests').insert(data).select('id').single();
-      if (error) {
-        console.error(error);
+    window.asoReady(async ({ db }) => {
+      try {
+        const docRef = await db.collection('requests').add(data);
+        // best-effort: trigger confirmation + admin notification emails
+        fetch(window.ASO_FUNCTIONS_BASE + '/notifyNewRequest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request_id: docRef.id }),
+        }).catch(() => {});
+        projStatus.textContent = "Request sent — we'll reply with a price and date within a day.";
+        projForm.reset();
+        sSuccess && sSuccess();
+      } catch (err) {
+        console.error(err);
         projStatus.textContent = "Couldn't send — email us directly at astrikout@gmail.com.";
+      } finally {
         projSubmitBtn.disabled = false;
-        return;
       }
-      // best-effort: trigger confirmation + admin notification emails
-      fetch(window.ASO_CONFIG.SUPABASE_URL + '/functions/v1/notify-new-request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: window.ASO_CONFIG.SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ request_id: row.id }),
-      }).catch(() => {});
-      projStatus.textContent = "Request sent — we'll reply with a price and date within a day.";
-      projSubmitBtn.disabled = false;
-      projForm.reset();
-      sSuccess && sSuccess();
     });
   });
 
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/config.js"></script>
-<script src="assets/aso-client.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="assets/firebase-config.js"></script>
+<script src="assets/firebase-client.js"></script>
 <script src="assets/chat-widget.js"></script>
 </body>
 </html>
